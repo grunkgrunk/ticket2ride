@@ -28,13 +28,25 @@ class Game(object):
         self.board                 = TTRBoard.Board()
         self.numPlayers            = numPlayers
         self.players               = []
+
+        self.turns = []
         
         self.posToMove             = 0
         
-        def getOpenInfo(self):
+        def getOpenInfo(self, player):
             """returns a dict of open info for all players
             """
-            openInfo = {}
+            openInfo = {
+                'graph': self.board.G,
+                'hand': player.hand,
+                'discard': self.deck.discardPile,
+                'trains': {p : self.players[p].getNumTrains() for p in range(self.numPlayers)},
+                'draw_pile': self.deck.getAvailableCards(),
+                'hand_sizes': {p : len(self.players[p].hand) for p in range(self.numPlayers)},
+                'num_tickets': {p : len(self.players[p].getTickets()) for p in range(self.numPlayers)},
+                'scores' : {p : self.players[p].getScore() for p in range(self.numPlayers)},
+                'turns': self.turns
+            }
             
             return openInfo
 
@@ -61,6 +73,7 @@ class Game(object):
                                                 importlib.import_module(file_names[position])
                                                 )                          
             self.players.append(player)
+
     
     
     def printSepLine(self, toPrint):
@@ -160,7 +173,11 @@ class Game(object):
         choice = player.brain.chooseMove()
 
         if choice not in ['cards', 'trains', 'tickets']:
-            return "Invalid choice"
+            return {
+                "action" : None,
+                "result" : None
+            }
+
 
         #displayMap = input("Display map? y/n: ")
         #if displayMap == 'y':
@@ -170,64 +187,67 @@ class Game(object):
         #    else:
         #        self.board.showBoard(self.board.G, int(pauseTime))
         #        #Depricated?
-            
-        if choice == 'cards':
-            self.pickCards(player)
-            return "Move complete"
         
-        elif choice == 'trains':
-            self.placeTrains(player)
-            return "Move complete"
-        else:
-            self.pickTickets(player)
-            return "Move complete"
+        actions = {
+            "cards" : self.pickCards,
+            "trains" : self.placeTrains,
+            "tickets" : self.pickTickets
+        }
+        result = actions[choice](player)
+
+        return {
+            "action" : choice,
+            "result" : result
+        }
     
     def pickCards(self, player):
         
         choice1 = player.brain.chooseCard(self.deck.getDrawPile(),None)
 
-        if choice1 not in (self.deck.getDrawPile() + ['drawPile']):
-               return "Invalid"
+        if choice1 not in (self.deck.getDrawPile() + ['draw_pile']):
+               return None
         
         #add card to player's hand
         #remove it from drawPile or cards and 
         #add new card to drawPile
-        if choice1 == 'drawPile':
-            chosenCard = self.deck.pickFaceDown()
-            player.addCardToHand(chosenCard)
+        if choice1 == 'draw_pile':
+            chosenCard1 = self.deck.pickFaceDown()
+            player.addCardToHand(chosenCard1)
         else:
             player.addCardToHand(self.deck.pickFaceUpCard(choice1))
         
         #start second card selection
         if choice1 == 'wild':
-            return "Move complete"
+            return {'chosen': [choice1]}
         
          
         choice2 = player.brain.chooseCard(self.deck.getDrawPile(), choice1)
         if choice2 == 'wild'  \
-               or (choice2 not in self.deck.getDrawPile() + ['drawPile']):
-            return "Invalid"
+               or (choice2 not in self.deck.getDrawPile() + ['draw_pile']):
+            return None
             
         #add card to player's hand
         #remove it from drawPile or cards and 
         #add new card to drawPile
-        if choice2 == 'drawPile':
+        if choice2 == 'draw_pile':
             chosenCard = self.deck.pickFaceDown()
             player.addCardToHand(chosenCard)
         else:
             player.addCardToHand(self.deck.pickFaceUpCard(choice2))
         
-        return "Move complete"
+        return {
+            'chosen' : [choice1, choice2]
+        }
     
     def placeTrains(self, player):
         
         route,build_color,wild_count = player.brain.chooseRoute()
         
-        Edges=self.board.G.edges(route[0],route[1],keys=True)
-        Edges=[edge for edge in Edges if edge.owner==None]
+        edges=self.board.G.edges(route[0],route[1],keys=True)
+        edges=[edge for edge in edges if edge.owner==None]
     
-        if len(Edges)==0:
-            return "Invalid"
+        if len(edges)==0:
+            return None
     
         chosen_edge=[]
         for edge in Edges:
@@ -238,12 +258,12 @@ class Game(object):
                 chosen_edge=edge
                 break
             else:
-                return "Invalid"
+                return None
 
 
 
         if not self.doesPlayerHaveCardsForEdge(player, chosen_edge,wild_count):
-            return "Invalid"
+            return None
 
     
         #remove cards from player's hand
@@ -256,63 +276,39 @@ class Game(object):
 
         #calculate points
         player.addPoints(self.routeValues[chosen_edge.weight])
-
-        
         
         #add cards to discard pile
-        self.deck.addToDiscard([build_color for x in range(chosen_edge.weight - wild_count)] + ['wild' for x in range(wild_count)])
+        self.deck.addToDiscard(build_color * (chosen_edge.weight - wild_count) + ['wild']*wild_count)
         
         #remove trains from players numTrains
         player.playNumTrains(chosen_edge.weight)  
 
-        return "Move complete"
+        return {
+            "route" : route,
+            "color" : build_color,
+            "wilds" : wild_count
+        }
     
-    def pickTickets(self, player, minNumToSelect = 1):
-        count = 0
-        tickets = self.deck.dealTickets(self.numTicketsDealt)
+    def pickTickets(self, player):
+        tickets = self.deck.dealTickets(self.numTicketsDealt)        
+        chosenTickets = player.brain.chooseTickets(tickets)
+        # check if player has chosen enough tickets
+        if len(chosenTickets) <= 0:
+            return None
 
-        #assign a number to each ticket to make it easier to choose
-        tickets = {x[0]:x[1] for x in zip(range(len(tickets)), tickets)}
-        print ("Please select at least " + str(minNumToSelect) + ": ")
-        
-        self.printSepLine(tickets)
-        
-        choices = set()
-        choice = input("Select a number corresponding to the above tickets,"
-                            + " type done when finished: ")
-
-        while (choice != 'done' and count < 7) \
-               or len(choices) < minNumToSelect:
-            try:
-                choices.add(tickets[int(choice)])
-                choice = input("Select the number corresponding to the "
-                                   +"above tickets, type 'done' when finished: "
-                                  )
-            except:
-                choice = input("Invalid Choice: Select the number "
-                                    + "corresponding to the above tickets, "
-                                    + "type 'done' when finished: "
-                                    + " (must select at least "
-                                    + str(minNumToSelect)
-                                    + ") "
-                                  )
-                count += 1
-
-        print ("You selected: ")
-        for ticket in choices:
+        for ticket in chosenTickets:
             player.addTicket(ticket)
-            print (ticket)
         
         
         #add tickets that weren't chosen to the ticketDiscardPile
         notChosen = set(range(len(tickets))).difference(choices)
-        for i in notChosen:
-            self.deck.addToTicketDiscard(tickets[i])
+        self.deck.replaceTicketCards(notChosen)
+#        for i in notChosen:
+ #           self.deck.addToTicketDiscard(tickets[i])        
         
-        print ("All of your tickets: ")
-        self.printSepLine(player.getTickets())
-        
-        return "Move complete"
+        return {
+            "num_tickets": len(chosenTickets)
+        }
     
 
 def playTTR(numPlayers):
@@ -327,8 +323,8 @@ def playTTR(numPlayers):
 
     #main game loop
     while True:
-       
-        game.playTurn(player)
+        result = game.playTurn(player)
+        self.turns.append(result)
         
         #condition to break out of loop
         if game.checkEndingCondition(player):
