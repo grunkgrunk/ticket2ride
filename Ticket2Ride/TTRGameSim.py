@@ -20,7 +20,7 @@ class Game(object):
         self.endingTrainCount      = 3 # ending condition to trigger final round
 
         self.pointsForLongestRoute = 10
-        self.startingNumOfTrains   = 15 #45
+        self.startingNumOfTrains   = 45 #45
         self.deck                  = TTRCards.Cards(self.sizeDrawPile, self.maxWilds)
         
         self.board                 = TTRBoard.Board()
@@ -76,20 +76,13 @@ class Game(object):
     def getCurrentPlayer(self):
         return self.players[self.posToMove]
     
-    def doesPlayerHaveCardsForEdge(self, player, city1, city2):
-        if player.playerBoard.hasEdge(city1, city2):
+    def doesPlayerHaveCardsForEdge(self, player, chosen_edge, wild_count):
+        routeDist = chosen_edge.weight
+        routeColor = chosen_edge.color
+        if wild_count >= player.hand['wild']:
             return False
-        routeDist = self.board.getEdgeWeight(city1, city2)
-        routeColors = self.board.getEdgeColors(city1, city2)
-        for col in routeColors:
-            if col == 'grey':
-                if max([x for x in player.hand.values() if x != 'wild']) \
-                + player.hand['wild'] >= routeDist:
-                    return True
-            else:
-                routeDist = self.board.getEdgeWeight(city1, city2)
-                if player.hand[col] + player.hand['wild'] >= routeDist:
-                    return True
+        elif player.hand(routeColor) + wild_count >= routeDist:
+            return True
         return False      
     
     def checkEndingCondition(self, player):
@@ -232,120 +225,48 @@ class Game(object):
         
         route,build_color,wild_count = player.brain.chooseRoute()
         
-        if route not in self.board.iterEdges() or not self.doesPlayerHaveCardsForEdge(player, route[0], route[1]):
-            return "Invalid"
-        
-        if build_color == route[3]:
+        Edges=self.board.G.edges(route[0],route[1],keys=True)
+        Edges=[edge for edge in Edges if edge.owner==None]
     
-        routeDist = self.board.getEdgeWeight(city1, city2)
-        spanColors = self.board.getEdgeColors(city1, city2)
-        
-        if len(spanColors) == 0:
-            #a little harsh but will updated later to players start over
-            print ("You have a selected two cities with no legal route")
-            return "Move complete"
-        
-        
-        print ("\n This route is of length: ")
-        self.printSepLine(routeDist)
-        print ("Your hand consists of: ")
-        self.printSepLine(player.getHand())
-        
-        if len(spanColors) == 1:
-            color = spanColors[0] #use first element, getEdgeColors returns list
-            print ("This route is: " + str(color))
-        else:
-            color = input("which color track would you like to claim? (" 
-                              + str(spanColors) 
-                              + " available): "
-                              )
-            if color not in spanColors:
-                print ("Invalid Color")
-                return "Move complete"
-                
-        #check to see if player has appropriate cards to play route 
-        # (edge weight, color/wild)
-        if not self.doesPlayerHaveCardsForEdge(player, city1, city2):
-            print ("You do not have sufficient cards to play this route")
-            return "Move complete"
-        if color == 'grey':
-            availColor = max(x for x in player.hand.values())
-        else:
-            availColor = player.hand[color]
+        if len(Edges)==0:
+            return "Invalid"
+    
+        chosen_edge=[]
+        for edge in Edges:
+            if edge.color == 'grey':
+                chosen_edge=edge
+                break
+            elif edge.color == build_color:
+                chosen_edge=edge
+                break
+            else:
+                return "Invalid"
 
-        availWild = player.hand['wild']
-        if color == 'grey':
-            
-            color = input("Which color would you like to play "
-                              + "on this grey route? "
-                              + "(pick a color, not 'wild'): "
-                             )
 
-            if color not in self.deck.possibleColors:
-                print ("Invalid Color")
-                return "Move complete"
-            availColor = player.hand[color]
-            numColor = input("How many " + str(color) 
-                                 + " cards would you like to play? (" 
-                                 + str(availColor) 
-                                 + " available): "
-                                 )
-        else:
-            numColor = input("How many " 
-                                 + str(color) 
-                                 + " cards would you like to play? (" 
-                                 + str(availColor) 
-                                 + " available) "
-                                 )
-        if numColor not in [str(x) for x in range(routeDist + 1)]:
-            print ("Invalid Entry")
-            return "Move complete"
-        numColor = int(numColor) # change raw string to int
-        if numColor not in range(0, availColor +1):
-            print ("You do not have that many")
-            return "Move complete"
 
-        if numColor < routeDist: #span distance
-            numWild = input("How many wild cards would you like to play? (" 
-                                + str(availWild) 
-                                + " available) "
-                                )
-            numWild = int(numWild)
-            if numWild not in range(0, availWild +1):
-                print ("You do not have that many")
-                return "Move complete"
-        else:
-            numWild = 0
+        if not self.doesPlayerHaveCardsForEdge(player, chosen_edge,wild_count):
+            return "Invalid"
 
-        #verify that this is a legal move
-        if numWild + numColor != routeDist:
-            print ("Selected cards do not properly span that route")
-            return "Move complete"
-        
-        #claim route for player (see dedicated method within Game class)
-        player.playerBoard.addEdge(city1, city2, routeDist, color)
-        
-        #remove route from main board
-        self.board.removeEdge(city1, city2, color)
-        
-        #calculate points
-        player.addPoints(self.routeValues[routeDist])
     
         #remove cards from player's hand
-        player.removeCardsFromHand(color, numColor)
-        player.removeCardsFromHand('wild', numWild)
+        player.removeCardsFromHand('wild', wild_count)
+        player.removeCardsFromHand(build_color, chosen_edge.weight - wild_count)
+
+        #claim route for player (see dedicated method within Game class)
+        chosen_edge.owner=player.position
+        player.playerBoard.addEdge(chosen_edge)
+
+        #calculate points
+        player.addPoints(self.routeValues[chosen_edge.weight])
+
+        
         
         #add cards to discard pile
-        self.deck.addToDiscard([color for x in range(numColor)] 
-                              + ['wild' for x in range(numWild)]
-                              )
+        self.deck.addToDiscard([build_color for x in range(chosen_edge.weight - wild_count)] + ['wild' for x in range(wild_count)])
         
         #remove trains from players numTrains
-        player.playNumTrains(routeDist)
-        
-        print ("Number of trains left to play: ")
-        self.printSepLine(player.getNumTrains())  
-                    
+        player.playNumTrains(chosen_edge.weight)  
+
         return "Move complete"
     
     def pickTickets(self, player):
@@ -368,38 +289,19 @@ class Game(object):
         return "Move complete"
     
 
-def playTTR():
-
-    #before first turn, select 1, 2 or 3 destination tickets
+def playTTR(numPlayers):
     
-    print ("\n Welcome to Ticket to Ride! \n")
-    
-    
-    
-    numPlayers = input("How many players will be playing today? "
-                            + "1,2,3,4,5 or 6? ")
-
-    count = 0
-    while int(numPlayers) not in range(1,7) and count < 5:
-        if numPlayers == 'exit': return "Thanks for playing!"
-        numPlayers = input("Please enter either 1,2,3,4,5 or 6: ")
-        count += 1
-    if count >= 5:
-        print ("Default player count has been set to 2")
-        numPlayers = 2
-        
     game = Game(int(numPlayers))    
     
     game.initialize()
     
-    
-    
     player = game.players[game.posToMove]
+
+    
 
     #main game loop
     while True:
-        print ("\n_________________NEW PLAYER'S TURN_________________ \n")
-        print ("It's your turn " + str(player.getName()) + "! ")
+       
         game.playTurn(player)
         
         #condition to break out of loop

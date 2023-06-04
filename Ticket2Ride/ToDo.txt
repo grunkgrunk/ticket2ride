@@ -1,0 +1,5 @@
+Rewrite doesPlayerHaveCardsForEdge in GameSim
+
+Write getOpenInfo and include
+	-Mission cards
+	-number of cards in player hands
