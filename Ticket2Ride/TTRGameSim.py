@@ -29,6 +29,13 @@ class Game(object):
         
         self.posToMove             = 0
         
+        def getOpenInfo(self):
+            """returns a dict of open info for all players
+            """
+            openInfo = {}
+            
+            return openInfo
+
         #point values for tracks of different lengths
         self.routeValues           = {1:1, 2:2, 3:4, 4:7, 5:10, 6:15}
 
@@ -149,7 +156,7 @@ class Game(object):
         player: player object
         """
         
-        choice = playerAI.move(player)
+        choice = player.brain.chooseMove(self.getOpenInfo())
 
         if choice not in ['cards', 'trains', 'tickets']:
             return "Invalid choice"
@@ -176,126 +183,49 @@ class Game(object):
     
     def pickCards(self, player):
         
-        print ("Draw pile consists of: ")
-        self.printSepLine(self.deck.getDrawPile())
-        
-        choice1 = playerAI.chooseCard(self.deck.getDrawPile())
-        while choice1 not in self.deck.getDrawPile() + ['drawPile'] \
-               and count < 5:
+        choice1 = player.brain.chooseCard(self.deck.getDrawPile(),None)
 
-            choice1 = input("Invalid repsonse. Please type either from " 
-                                + str(self.deck.getDrawPile()) 
-                                + " or type 'drawPile' "
-                                )
-            count += 1
+        if choice1 not in (self.deck.getDrawPile() + ['drawPile']):
+               return "Invalid"
         
         #add card to player's hand
         #remove it from drawPile or cards and 
         #add new card to drawPile
-        if count >= 5:
-            pass
-        elif choice1 == 'drawPile':
+        if choice1 == 'drawPile':
             chosenCard = self.deck.pickFaceDown()
-            print ("You selected: " + str(chosenCard))
             player.addCardToHand(chosenCard)
         else:
             player.addCardToHand(self.deck.pickFaceUpCard(choice1))
         
         #start second card selection
         if choice1 == 'wild':
-            print ("Your hand now consists of: ")
-            self.printSepLine(player.getHand()) 
- 
             return "Move complete"
-
-        count = 0
         
-        self.printSepLine(self.deck.getDrawPile())
          
-        choice2 = input("Please type another card from the above list or "
-                            + "type 'drawPile': ")
-        while choice2 == 'wild'  \
-               or (choice2 not in self.deck.getDrawPile() + ['drawPile'] \
-               and count < 5):
-            
-            choice2 = input("Invalid repsonse. Please type either from " 
-                                + str(self.deck.getDrawPile()) 
-                                + " or type 'drawPile' \
-                                NOTE: second choice cannot be 'wild' "
-                                )
-            count += 1
+        choice2 = player.brain.chooseCard(self.deck.getDrawPile(), choice1)
+        if choice2 == 'wild'  \
+               or (choice2 not in self.deck.getDrawPile() + ['drawPile']):
+            return "Invalid"
             
         #add card to player's hand
         #remove it from drawPile or cards and 
         #add new card to drawPile
-        if count >= 5:
-            return "Move complete"
-        elif choice2 == 'drawPile':
+        if choice2 == 'drawPile':
             chosenCard = self.deck.pickFaceDown()
-            print ("You selected: " + str(chosenCard))
             player.addCardToHand(chosenCard)
         else:
             player.addCardToHand(self.deck.pickFaceUpCard(choice2))
         
-        print ("Your hand now consists of: ")
-        self.printSepLine(player.getHand())  
         return "Move complete"
     
     def placeTrains(self, player):
-        count = 0
-        print ("Available cities:")
-
-        #only print (routes that are legal given the players cards)
-        #sort alphabetically
-        self.printSepLine([x for x in sorted(self.board.iterEdges()) 
-                        if self.doesPlayerHaveCardsForEdge(player, x[0], x[1])])
         
-        print ("Your hand consists of: ")
-        self.printSepLine(player.getHand())
+        route,build_color,wild_count = player.brain.chooseRoute()
         
-        city1 = input("Please type the start city of desired route: ")
+        if route not in self.board.iterEdges() or not self.doesPlayerHaveCardsForEdge(player, route[0], route[1]):
+            return "Invalid"
         
-        while city1 not in self.board.getCities() and count < 5:
-            city1 = input("Invalid response.  "
-                              + "Please select from the above city list: "
-                             )
-            count += 1
-        
-        if count >= 5:
-            return "Move complete"
-            
-        if len([x for x in self.board.G.neighbors(city1) 
-                if self.board.hasEdge(city1, x)]) == 0:
-
-            print ("You have a selected a city with no legal destination")
-            return "Move complete"
-        
-        #start city2
-        count = 0
-        
-        print ("Available destination cities: " \
-        + str([x for x in self.board.G.neighbors(city1) 
-              if self.doesPlayerHaveCardsForEdge(player, city1, x)]))
-        
-        city2 = input("Please type the destination city to go to from " 
-                          + str(city1) 
-                          + " : "
-                          )
-        
-        while not self.board.hasEdge(city1, city2) and count < 5:
-            city2 = input("Invalid response.  "
-                              + "Please type one of the following cities "
-                              + "(without quotes): \n" 
-                              + str([x for x in self.board.G.neighbors(city1) 
-                                    if self.board.hasEdge(city1, x)]) 
-                              + " : "
-                              )
-            count += 1    
-            
-        if count >=5:
-            return "Move complete"
-    
-        #start exchange cards and place trains
+        if build_color == route[3]:
     
         routeDist = self.board.getEdgeWeight(city1, city2)
         spanColors = self.board.getEdgeColors(city1, city2)
