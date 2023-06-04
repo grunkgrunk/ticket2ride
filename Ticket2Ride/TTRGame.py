@@ -231,13 +231,13 @@ class Game(object):
         self.printSepLine(self.deck.getDrawPile())
         
         choice1 = raw_input("Please type a card from the above list or "
-                            + "type 'drawPile': ")
-        while choice1 not in self.deck.getDrawPile() + ['drawPile'] \
+                            + "type 'draw_pile': ")
+        while choice1 not in self.deck.getDrawPile() + ['draw_pile'] \
                and count < 5:
 
             choice1 = raw_input("Invalid repsonse. Please type either from " 
                                 + str(self.deck.getDrawPile()) 
-                                + " or type 'drawPile' "
+                                + " or type 'draw_pile' "
                                 )
             count += 1
         
@@ -246,7 +246,7 @@ class Game(object):
         #add new card to drawPile
         if count >= 5:
             pass
-        elif choice1 == 'drawPile':
+        elif choice1 == 'draw_pile':
             chosenCard = self.deck.pickFaceDown()
             print "You selected: " + str(chosenCard)
             player.addCardToHand(chosenCard)
@@ -265,14 +265,14 @@ class Game(object):
         self.printSepLine(self.deck.getDrawPile())
          
         choice2 = raw_input("Please type another card from the above list or "
-                            + "type 'drawPile': ")
+                            + "type 'draw_pile': ")
         while choice2 == 'wild'  \
-               or (choice2 not in self.deck.getDrawPile() + ['drawPile'] \
+               or (choice2 not in self.deck.getDrawPile() + ['draw_pile'] \
                and count < 5):
             
             choice2 = raw_input("Invalid repsonse. Please type either from " 
                                 + str(self.deck.getDrawPile()) 
-                                + " or type 'drawPile' \
+                                + " or type 'draw_pile' \
                                 NOTE: second choice cannot be 'wild' "
                                 )
             count += 1
@@ -282,7 +282,7 @@ class Game(object):
         #add new card to drawPile
         if count >= 5:
             return "Move complete"
-        elif choice2 == 'drawPile':
+        elif choice2 == 'draw_pile':
             chosenCard = self.deck.pickFaceDown()
             print "You selected: " + str(chosenCard)
             player.addCardToHand(chosenCard)
