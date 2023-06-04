@@ -20,7 +20,7 @@ class Player(object):
         
         #implimented as a collection to avoid O(n) hand.remove(x)
         self.hand           = collections.Counter(startingHand)
-        self.brain          = brain_script
+        self.brain          = brain_script()
         self.tickets        = {x:False for x in startingTickets}
         self.numTrains      = numTrains
         self.points         = 0

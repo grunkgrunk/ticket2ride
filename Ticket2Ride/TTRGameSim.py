@@ -156,8 +156,8 @@ class Game(object):
         """player chooses 'cards', 'trains', 'tickets'
         player: player object
         """
-        
-        choice = player.brain.chooseMove(self.getOpenInfo())
+        player.brain.updateGameState(self.getOpenInfo())
+        choice = player.brain.chooseMove()
 
         if choice not in ['cards', 'trains', 'tickets']:
             return "Invalid choice"
