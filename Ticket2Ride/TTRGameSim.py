@@ -8,6 +8,8 @@ import TTRCards
 import TTRPlayer
 import collections
 import pprint
+import importlib
+import os
 
 class Game(object):
     def __init__(self, numPlayers):
@@ -51,18 +53,24 @@ class Game(object):
         #point values for tracks of different lengths
         self.routeValues           = {1:1, 2:2, 3:4, 4:7, 5:10, 6:15}
 
+        #Here we import the brains
+
+        file_names=[file_name[:-3] for file_name in os.listdir("/Brains") if file_name.endswith('.py')]
+
+
         for position in range(numPlayers):
             startingHand     = self.deck.dealCards(self.sizeStartingHand)
-            startingTickets  = [] #self.deck.dealTickets(self.numTicketsDealt)
-                                  #this is now done in initialize method below
-                                  #occurs before first player's first move
+            startingTickets  = 0
             playerBoard      = TTRBoard.PlayerBoard()
+            #Here we
+
 
             player           = TTRPlayer.Player(startingHand, 
                                                 startingTickets, 
                                                 playerBoard, 
                                                 position, 
-                                                self.startingNumOfTrains
+                                                self.startingNumOfTrains,
+                                                importlib.import_module(file_names[position])
                                                 )                          
             self.players.append(player)
 
@@ -312,7 +320,7 @@ def playTTR(numPlayers):
     
     player = game.players[game.posToMove]
 
-    
+
 
     #main game loop
     while True:
