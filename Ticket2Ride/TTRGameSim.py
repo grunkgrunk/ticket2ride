@@ -29,10 +29,19 @@ class Game(object):
         
         self.posToMove             = 0
         
-        def getOpenInfo(self):
+        def getOpenInfo(self, player):
             """returns a dict of open info for all players
             """
-            openInfo = {}
+            openInfo = {
+                'graph': self.board.G,
+                'hand': player.hand,
+                'discard': self.deck.discardPile,
+                'trains': {p : self.players[p].getNumTrains() for p in range(self.numPlayers)},
+                'draw_pile': self.deck.getAvailableCards(),
+                'hand_sizes': {p : len(self.players[p].hand) for p in range(self.numPlayers)},
+                'num_tickets': {p : len(self.players[p].getTickets()) for p in range(self.numPlayers)},
+                'scores' : {p : self.players[p].getScore() for p in range(self.numPlayers)},
+            }
             
             return openInfo
 
@@ -53,6 +62,7 @@ class Game(object):
                                                 self.startingNumOfTrains
                                                 )                          
             self.players.append(player)
+
     
     
     def printSepLine(self, toPrint):
@@ -338,50 +348,22 @@ class Game(object):
                     
         return "Move complete"
     
-    def pickTickets(self, player, minNumToSelect = 1):
-        count = 0
-        tickets = self.deck.dealTickets(self.numTicketsDealt)
+    def pickTickets(self, player):
+        tickets = self.deck.dealTickets(self.numTicketsDealt)        
+        chosenTickets = player.brain.chooseTickets(tickets)
+        # check if player has chosen enough tickets
+        if len(chosenTickets) <= 0:
+            return "Invalid"
 
-        #assign a number to each ticket to make it easier to choose
-        tickets = {x[0]:x[1] for x in zip(range(len(tickets)), tickets)}
-        print ("Please select at least " + str(minNumToSelect) + ": ")
-        
-        self.printSepLine(tickets)
-        
-        choices = set()
-        choice = input("Select a number corresponding to the above tickets,"
-                            + " type done when finished: ")
-
-        while (choice != 'done' and count < 7) \
-               or len(choices) < minNumToSelect:
-            try:
-                choices.add(tickets[int(choice)])
-                choice = input("Select the number corresponding to the "
-                                   +"above tickets, type 'done' when finished: "
-                                  )
-            except:
-                choice = input("Invalid Choice: Select the number "
-                                    + "corresponding to the above tickets, "
-                                    + "type 'done' when finished: "
-                                    + " (must select at least "
-                                    + str(minNumToSelect)
-                                    + ") "
-                                  )
-                count += 1
-
-        print ("You selected: ")
-        for ticket in choices:
+        for ticket in chosenTickets:
             player.addTicket(ticket)
-            print (ticket)
         
         
         #add tickets that weren't chosen to the ticketDiscardPile
         notChosen = set(range(len(tickets))).difference(choices)
-        for i in notChosen:
-            self.deck.addToTicketDiscard(tickets[i])
-        
-        print ("All of your tickets: ")
-        self.printSepLine(player.getTickets())
+        self.deck.replaceTicketCards(notChosen)
+#        for i in notChosen:
+ #           self.deck.addToTicketDiscard(tickets[i])        
         
         return "Move complete"
     

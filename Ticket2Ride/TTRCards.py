@@ -74,12 +74,12 @@ class Cards(object):
     
     def dealTicket(self):
         """returns a single destination ticket"""
-        if len(self.tickets) == 0:
-            self.restockTickets()
-        try:
-            return self.tickets.pop()
-        except IndexError:
-            print ("\n There are no more tickets in the deck! \n")
+        #if len(self.tickets) == 0:
+        #    self.restockTickets()
+        #try:
+        return self.tickets.pop()
+        #except IndexError:
+        #    print ("\n There are no more tickets in the deck! \n")
     
     def dealCards(self, numCards):
         """returns a list of (numCards) cards
@@ -146,14 +146,20 @@ class Cards(object):
                 self.restockCards()
             nextCard = self.dealCard()
             if nextCard != None:
-                self.drawPile.append(nextCard)    
+                self.drawPile.append(nextCard)   
+
+    def replaceTicketCards(self, tickets):
+        # shuffle tickets
+        self.shuffle(tickets)
+        # add tickets to bottom of ticket pile
+        self.tickets = self.tickets + tickets 
         
-    def addToTicketDiscard(self, ticket):
-        """adds one or more cards to the discard pile
-        does not remove cards from source they came from
-        tickets: list of length > 0
-        """
-        self.ticketDiscardPile.append(ticket)
+    #def addToTicketDiscard(self, ticket):
+        # """adds one or more cards to the discard pile
+        # does not remove cards from source they came from
+        # tickets: list of length > 0
+        # """
+        # self.ticketDiscardPile.append(ticket)
     
     def getTicketPointValue(self, ticket):
         """returns the point value associated with the destination ticket
@@ -178,18 +184,18 @@ class Cards(object):
         self.shuffle(self.cards)
         self.discardPile = []
     
-    def restockTickets(self):
-        """used when tickets is empty, 
-        restocks tickets with ticket discard pile and shuffles
-        """
-        assert len(self.tickets) == 0
-        self.tickets = self.ticketDiscardPile
-        self.shuffle(self.tickets)
-        self.ticketDiscardPile = []
+    # def restockTickets(self):
+    #     """used when tickets is empty, 
+    #     restocks tickets with ticket discard pile and shuffles
+    #     """
+    #     assert len(self.tickets) == 0
+    #     self.tickets = self.ticketDiscardPile
+    #     # self.shuffle(self.tickets)
+    #     self.ticketDiscardPile = []
     
     def numTicketsLeftToDeal(self):
-        if len(self.tickets) == 0:
-            self.restockTickets()
+        #if len(self.tickets) == 0:
+        #    self.restockTickets()
         return len(self.tickets)
         
     def isEmpty(self, pile):
