@@ -60,7 +60,7 @@ class Game(object):
 
         for position in range(numPlayers):
             startingHand     = self.deck.dealCards(self.sizeStartingHand)
-            startingTickets  = 0
+            startingTickets  = None
             playerBoard      = TTRBoard.PlayerBoard()
             #Here we
 
@@ -243,14 +243,14 @@ class Game(object):
         
         route,build_color,wild_count = player.brain.chooseRoute()
         
-        edges=self.board.G.edges(route[0],route[1],keys=True)
-        edges=[edge for edge in edges if edge.owner==None]
+        edges=self.board.G.edges(route[0],route[1],keys=True,data=True)
+        edges=[edge for edge in edges if edge[-1]["owner"]==None]
     
         if len(edges)==0:
             return None
     
         chosen_edge=[]
-        for edge in Edges:
+        for edge in edges:
             if edge.color == 'grey':
                 chosen_edge=edge
                 break
