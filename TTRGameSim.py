@@ -32,35 +32,19 @@ class Game(object):
         self.turns = []
         
         self.posToMove             = 0
-        
-        def getOpenInfo(self, player):
-            """returns a dict of open info for all players
-            """
-            openInfo = {
-                'graph': self.board.G,
-                'hand': player.hand,
-                'discard': self.deck.discardPile,
-                'trains': {p : self.players[p].getNumTrains() for p in range(self.numPlayers)},
-                'draw_pile': self.deck.getAvailableCards(),
-                'hand_sizes': {p : len(self.players[p].hand) for p in range(self.numPlayers)},
-                'num_tickets': {p : len(self.players[p].getTickets()) for p in range(self.numPlayers)},
-                'scores' : {p : self.players[p].getScore() for p in range(self.numPlayers)},
-                'turns': self.turns
-            }
-            
-            return openInfo
+    
 
         #point values for tracks of different lengths
         self.routeValues           = {1:1, 2:2, 3:4, 4:7, 5:10, 6:15}
 
         #Here we import the brains
 
-        file_names=[file_name[:-3] for file_name in os.listdir("/Brains") if file_name.endswith('.py')]
+        file_names=[file_name[:-3] for file_name in os.listdir("./Brains") if file_name.endswith('.py')]
 
 
         for position in range(numPlayers):
             startingHand     = self.deck.dealCards(self.sizeStartingHand)
-            startingTickets  = None
+            startingTickets  = []
             playerBoard      = TTRBoard.PlayerBoard()
             #Here we
 
@@ -70,11 +54,26 @@ class Game(object):
                                                 playerBoard, 
                                                 position, 
                                                 self.startingNumOfTrains,
-                                                importlib.import_module(file_names[position])
+                                                importlib.import_module("Brains." + file_names[position])
                                                 )                          
             self.players.append(player)
 
-    
+    def getOpenInfo(self, player):
+        """returns a dict of open info for all players
+        """
+        openInfo = {
+            'graph': self.board.G,
+            'hand': player.hand,
+            'discard': self.deck.discardPile,
+            'trains': {p : self.players[p].getNumTrains() for p in range(self.numPlayers)},
+            # 'draw_pile': self.deck.getAvailableCards(),
+            'hand_sizes': {p : len(self.players[p].hand) for p in range(self.numPlayers)},
+            'num_tickets': {p : len(self.players[p].getTickets()) for p in range(self.numPlayers)},
+            # 'scores' : {p : self.players[p].getScore() for p in range(self.numPlayers)},
+            'turns': self.turns
+        }
+        
+        return openInfo
     
     def printSepLine(self, toPrint):
         print (toPrint)
@@ -107,7 +106,7 @@ class Game(object):
                 
             #pick desination tickets
             
-            self.pickTickets(player, 2)
+            self.pickTickets(player)
             
             self.advanceOnePlayer()
 
@@ -169,7 +168,7 @@ class Game(object):
         """player chooses 'cards', 'trains', 'tickets'
         player: player object
         """
-        player.brain.updateGameState(self.getOpenInfo())
+        player.brain.updateGameState(self.getOpenInfo(player))
         choice = player.brain.chooseMove()
 
         if choice not in ['cards', 'trains', 'tickets']:
@@ -289,19 +288,20 @@ class Game(object):
             "wilds" : wild_count
         }
     
-    def pickTickets(self, player):
+    def pickTickets(self, player, minkeep = 1):
         tickets = self.deck.dealTickets(self.numTicketsDealt)        
         chosenTickets = player.brain.chooseTickets(tickets)
         # check if player has chosen enough tickets
-        if len(chosenTickets) <= 0:
-            return None
+        if len(chosenTickets) < minkeep and len(tickets) > 0:
+            chosenTickets = tickets[0:minkeep]
 
         for ticket in chosenTickets:
             player.addTicket(ticket)
         
         
         #add tickets that weren't chosen to the ticketDiscardPile
-        notChosen = set(range(len(tickets))).difference(choices)
+        notChosen = list(set(tickets).difference(chosenTickets))
+        print(notChosen)
         self.deck.replaceTicketCards(notChosen)
 #        for i in notChosen:
  #           self.deck.addToTicketDiscard(tickets[i])        
@@ -324,7 +324,7 @@ def playTTR(numPlayers):
     #main game loop
     while True:
         result = game.playTurn(player)
-        self.turns.append(result)
+        game.turns.append(result)
         
         #condition to break out of loop
         if game.checkEndingCondition(player):

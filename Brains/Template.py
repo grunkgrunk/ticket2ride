@@ -9,7 +9,7 @@ class Brain:
     def chooseMove(self):
         # return type is string
         # return value must be one of "cards", "trains", "tickets"
-        pass 
+        return "tickets"
     
     def chooseCard(self, drawPile, previousChoice):
         # return value must be a value in drawPile or "draw_pile"
@@ -25,5 +25,5 @@ class Brain:
 
     def chooseTickets(self, tickets):
         # return a sublist of tickets. The list must have length larger than or equal to 1
-        pass
+        return tickets
     

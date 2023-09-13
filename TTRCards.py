@@ -91,6 +91,7 @@ class Cards(object):
         """returns a set of (numTickets) tickets
         numTickets: int
         """
+        numTickets = min(numTickets, len(self.tickets))
         return [self.dealTicket() for x in range(numTickets)]
     
     def pickFaceUpCard(self, card):
